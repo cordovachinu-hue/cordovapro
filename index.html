@@ -102,8 +102,8 @@
 <div id="login-overlay" style="display:none;position:fixed;inset:0;background:rgba(26,18,10,.96);z-index:999;align-items:center;justify-content:center;">
   <form id="login-form" style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:28px 26px;width:100%;max-width:340px;text-align:center;">
     <h2 style="margin:0 0 4px;font-size:17px;">Córdova — Acceso del equipo</h2>
-    <p style="margin:0 0 18px;color:var(--muted);font-size:12.5px;">Ingresa con tu correo autorizado.</p>
-    <input id="login-email" type="email" placeholder="Correo" required style="width:100%;margin-bottom:10px;padding:9px 10px;">
+    <p style="margin:0 0 18px;color:var(--muted);font-size:12.5px;">Ingresa con tu usuario (ej. cocina) o tu correo.</p>
+    <input id="login-email" type="text" placeholder="Usuario (ej. cocina) o correo" required style="width:100%;margin-bottom:10px;padding:9px 10px;">
     <input id="login-pass" type="password" placeholder="Contraseña" required style="width:100%;margin-bottom:14px;padding:9px 10px;">
     <div id="login-error" style="color:var(--warn);font-size:12px;margin-bottom:10px;min-height:14px;"></div>
     <button id="login-btn" type="submit" class="btn gold" style="width:100%;">Entrar</button>
@@ -253,13 +253,18 @@
     </div>
   </div>
   <div class="card" id="card-admin-accesos">
-    <h2>Acceso restringido a este módulo</h2>
-    <div class="sub">Agrega el correo de la persona que solo debe ver este módulo (no podrá ver ni editar el horario). Primero crea esa cuenta en Firebase Authentication, igual que se hizo con tu cuenta.</div>
+    <h2>Roles y accesos</h2>
+    <div class="sub">Cada persona entra con un usuario simple (ej. "cocina") y una clave — créalos primero en Firebase Authentication usando "usuario@cordovapro.local" como correo (por ejemplo "cocina@cordovapro.local"), igual que se hizo con tu cuenta. Aquí abajo escribe solo el usuario (o el correo completo si prefieres). Según el rol que le des, verá solo lo que le corresponde: un líder de turno solo ve y controla "Carga de horas" y "Movimientos" de su propia área.</div>
     <div class="row-actions">
-      <input id="nuevo-encargado-email" type="email" placeholder="correo@ejemplo.com" style="flex:1;min-width:220px;">
-      <button class="btn secondary" onclick="agregarEncargado()">Agregar acceso</button>
+      <input id="nuevo-rol-email" type="text" placeholder="usuario (ej. cocina) o correo completo" style="flex:1;min-width:220px;">
+      <select id="nuevo-rol-tipo">
+        <option value="admin">Administrador principal (ve y edita todo)</option>
+        <option value="lider_cocina">Líder de turno — Cocina</option>
+        <option value="lider_servicio">Líder de turno — Servicio al cliente</option>
+      </select>
+      <button class="btn secondary" onclick="agregarRol()">Guardar</button>
     </div>
-    <div id="lista-encargados"></div>
+    <div id="lista-roles"></div>
   </div>
 </section>
 
@@ -542,6 +547,7 @@ function defaultState(){
 function normalizeState(){
   if(!state || !state.areas) state = defaultState();
   if(!Array.isArray(state.encargadosMovimientos)) state.encargadosMovimientos = [];
+  if(!state.roles || typeof state.roles !== 'object' || Array.isArray(state.roles)) state.roles = {};
   AREA_DEFS.forEach(a=>{
     if(!state.areas[a.id]) state.areas[a.id] = nuevaAreaVacia();
     const ar = state.areas[a.id];
@@ -611,12 +617,15 @@ window.renderAll = renderAll;
 
 function renderAreaTabs(){
   const el = document.getElementById('area-tabs');
-  el.innerHTML = AREA_DEFS.map(a=>`<button class="${a.id===state.currentArea?'active':''}" onclick="setArea('${a.id}')">${a.icono} ${a.nombre}</button>`).join('');
+  el.innerHTML = AREA_DEFS.map(a=>`<button data-area="${a.id}" class="${a.id===state.currentArea?'active':''}" onclick="setArea('${a.id}')">${a.icono} ${a.nombre}</button>`).join('');
   const cur = AREA_DEFS.find(a=>a.id===state.currentArea);
   const hi = AR_HORA_INICIO();
   document.getElementById('area-desc').textContent = `Área: ${cur.nombre} · hora a hora, de ${hi}:00 a. m. a 10:00 p. m.`;
 }
 function setArea(id){
+  // Un líder de turno solo puede quedarse en su propia área.
+  const areaForzada = typeof areaPermitidaPorRol === 'function' ? areaPermitidaPorRol(miRol()) : null;
+  if(areaForzada && id !== areaForzada) return;
   state.currentArea = id;
   save();
   renderAreaTabs();
@@ -628,6 +637,8 @@ function setArea(id){
   renderEquidad();
   renderHistorial();
   renderSemanasArchivadas();
+  renderCarga();
+  renderMovimientos();
 }
 
 function showSec(id){
@@ -669,7 +680,7 @@ function renderMovimientos(){
     </tr>`;
   }).join('');
 
-  renderEncargados();
+  renderRoles();
 }
 function agregarMovimiento(){
   const ar = AR();
@@ -692,42 +703,77 @@ function borrarMovimiento(empId, movId){
   save();
   renderMovimientos();
 }
-function renderEncargados(){
-  const div = document.getElementById('lista-encargados');
+const NOMBRE_ROL = {
+  admin: 'Administrador principal',
+  lider_cocina: 'Líder de turno — Cocina',
+  lider_servicio: 'Líder de turno — Servicio al cliente'
+};
+function renderRoles(){
+  const div = document.getElementById('lista-roles');
   if(!div) return;
-  const lista = state.encargadosMovimientos || [];
-  div.innerHTML = lista.length
-    ? lista.map(email=>`<div class="row-actions"><span>${email}</span><button class="btn danger" style="padding:3px 8px;font-size:11px;" onclick="quitarEncargado('${email}')">Quitar acceso</button></div>`).join('')
-    : '<div class="sub">Nadie tiene acceso restringido todavía.</div>';
+  const entradas = Object.entries(state.roles||{});
+  div.innerHTML = entradas.length
+    ? entradas.map(([email,rol])=>`<div class="row-actions"><span>${email} — <strong>${NOMBRE_ROL[rol]||rol}</strong></span><button class="btn danger" style="padding:3px 8px;font-size:11px;" onclick="quitarRol('${email}')">Quitar</button></div>`).join('')
+    : '<div class="sub">Todavía nadie tiene un rol asignado (las cuentas sin asignar se tratan como administrador principal).</div>';
 }
-function agregarEncargado(){
-  const input = document.getElementById('nuevo-encargado-email');
-  const email = input.value.trim().toLowerCase();
-  if(!email) return;
-  if(!Array.isArray(state.encargadosMovimientos)) state.encargadosMovimientos = [];
-  if(!state.encargadosMovimientos.includes(email)) state.encargadosMovimientos.push(email);
+function agregarRol(){
+  const input = document.getElementById('nuevo-rol-email');
+  const crudo = input.value.trim();
+  if(!crudo) return;
+  // Usa la misma regla que el login: si escribes "cocina" sin @, se guarda como
+  // "cocina@cordovapro.local" para que coincida exactamente con lo que Firebase
+  // reporta cuando esa persona inicia sesión.
+  const email = window.normalizarUsuario ? window.normalizarUsuario(crudo) : crudo.toLowerCase();
+  const rol = document.getElementById('nuevo-rol-tipo').value;
+  if(!state.roles || typeof state.roles !== 'object') state.roles = {};
+  state.roles[email] = rol;
   input.value = '';
   save();
-  renderEncargados();
+  renderRoles();
 }
-function quitarEncargado(email){
-  state.encargadosMovimientos = (state.encargadosMovimientos||[]).filter(e=>e!==email);
+function quitarRol(email){
+  if(state.roles) delete state.roles[email];
   save();
-  renderEncargados();
+  renderRoles();
 }
-/* Control de acceso simple: si el correo con el que se inició sesión está en la lista de
-   encargados de movimientos, esa cuenta solo puede ver este módulo (no el horario). */
-function esEncargadoMovimientos(){
+/* Control de acceso por rol: cada correo tiene asignado un rol en state.roles.
+   Si no está asignado explícitamente, se trata como administrador principal
+   (así la cuenta que ya existía sigue viendo todo, sin romper nada). */
+function miRol(){
   const email = (window.currentUserEmail||'').toLowerCase();
-  return !!(email && state && Array.isArray(state.encargadosMovimientos) && state.encargadosMovimientos.includes(email));
+  if(email && state && state.roles && state.roles[email]) return state.roles[email];
+  return 'admin';
+}
+function areaPermitidaPorRol(rol){
+  if(rol==='lider_cocina') return 'cocina';
+  if(rol==='lider_servicio') return 'servicio';
+  return null; // administrador principal: sin restricción de área
 }
 function aplicarRolUI(){
-  const restringido = esEncargadoMovimientos();
-  document.querySelectorAll('nav.topnav button').forEach(b=>{
-    b.style.display = (!restringido || b.dataset.sec==='sec-movimientos') ? '' : 'none';
+  const rol = miRol();
+  const areaForzada = areaPermitidaPorRol(rol);
+  const restringido = !!areaForzada;
+
+  if(restringido && state.currentArea !== areaForzada){
+    state.currentArea = areaForzada;
+    renderAreaTabs();
+    renderHorario();
+  }
+
+  document.querySelectorAll('nav.areanav button').forEach(b=>{
+    b.style.display = (!restringido || b.dataset.area===areaForzada) ? '' : 'none';
   });
+
+  document.querySelectorAll('nav.topnav button').forEach(b=>{
+    const permitido = (b.dataset.sec==='sec-carga' || b.dataset.sec==='sec-movimientos');
+    b.style.display = (!restringido || permitido) ? '' : 'none';
+  });
+
+  const cardRoles = document.getElementById('card-admin-accesos');
+  if(cardRoles) cardRoles.style.display = restringido ? 'none' : '';
+
   if(restringido){
-    showSec('sec-movimientos');
+    showSec('sec-carga');
   }
 }
 window.aplicarRolUI = aplicarRolUI;
@@ -754,7 +800,9 @@ function diaDeHoy(){
 function computeCargaGlobal(){
   const hoy = diaDeHoy();
   const filas = [];
+  const areaForzada = areaPermitidaPorRol(miRol());
   AREA_DEFS.forEach(a=>{
+    if(areaForzada && a.id !== areaForzada) return; // un líder de turno solo ve su propia área
     const ar = state.areas[a.id];
     ar.empleados.forEach(emp=>{
       const horas = horasSemanaDe(ar, emp.id);
@@ -1414,14 +1462,25 @@ function importJSON(ev){
     }
   });
 
+  // Permite entrar con un usuario simple (ej. "cocina") en vez de un correo real:
+  // si lo escrito no tiene "@", se le agrega un dominio interno fijo por debajo.
+  // Así "cocina" se convierte en "cocina@cordovapro.local" para Firebase, sin que
+  // el líder de turno tenga que escribir ni recordar un correo.
+  const DOMINIO_USUARIO = '@cordovapro.local';
+  function normalizarUsuario(valor){
+    const v = valor.trim().toLowerCase();
+    return v.includes('@') ? v : (v + DOMINIO_USUARIO);
+  }
+  window.normalizarUsuario = normalizarUsuario;
+
   form.addEventListener('submit', (e)=>{
     e.preventDefault();
     errBox.textContent = '';
     btn.disabled = true; btn.textContent = 'Entrando…';
-    const email = document.getElementById('login-email').value.trim();
+    const email = normalizarUsuario(document.getElementById('login-email').value);
     const pass = document.getElementById('login-pass').value;
     signInWithEmailAndPassword(auth, email, pass)
-      .catch(()=>{ errBox.textContent = 'Correo o contraseña incorrectos.'; })
+      .catch(()=>{ errBox.textContent = 'Usuario/correo o contraseña incorrectos.'; })
       .finally(()=>{ btn.disabled = false; btn.textContent = 'Entrar'; });
   });
 
