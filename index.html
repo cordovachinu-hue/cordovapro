@@ -236,7 +236,11 @@ const AREA_DEFS = [
 ];
 
 function pad2(n){ return String(n).padStart(2,'0'); }
-function idx(h){ return h-HORA_INICIO; }
+// Cada área puede tener su propia hora de inicio (ej. Servicio al cliente desde las 7 a.m.);
+// si el área no define una, se usa la general (8 a.m.).
+function AR_HORA_INICIO(){ return (AR().config && AR().config.horaInicio) || HORA_INICIO; }
+function AR_HOURS(){ const hi = AR_HORA_INICIO(); const arr=[]; for(let h=hi; h<HORA_FIN; h++) arr.push(h); return arr; }
+function idx(h){ return h - AR_HORA_INICIO(); }
 function cid(){ return 'e'+Math.random().toString(36).slice(2,9); }
 function fmtCOP(n){ return '$'+Math.round(n||0).toLocaleString('es-CO'); }
 
@@ -267,7 +271,7 @@ function nuevaAreaVacia(){
 function defaultState(){
   const cocina = {
     empleados: [
-      {id:'miguel',nombre:'Miguel',color:'#3aa0ff',horasObjetivo:42,rol:'',tarifaHora:0},
+      {id:'miguel',nombre:'Miguel',color:'#c2a26a',horasObjetivo:42,rol:'',tarifaHora:0},
       {id:'hernando',nombre:'Hernando',color:'#8a6d3b',horasObjetivo:42,rol:'',tarifaHora:0},
       {id:'ysidoro',nombre:'Ysidoro',color:'#6b5bd6',horasObjetivo:42,rol:'',tarifaHora:0},
       {id:'ivan',nombre:'Ivan',color:'#7a7a3b',horasObjetivo:42,rol:'',tarifaHora:0},
@@ -391,7 +395,7 @@ function defaultState(){
 
   const servicio = {
     empleados: [
-      {id:'mairo',nombre:'Mairon',color:'#3aa0ff',horasObjetivo:42,rol:'',tarifaHora:0},
+      {id:'mairo',nombre:'Mairon',color:'#c2a26a',horasObjetivo:42,rol:'',tarifaHora:0},
       {id:'lina',nombre:'Lina',color:'#b03060',horasObjetivo:42,rol:'',tarifaHora:0},
       {id:'pedro',nombre:'Pedro',color:'#8a6d3b',horasObjetivo:42,rol:'',tarifaHora:0},
       {id:'reinaldo',nombre:'Raynaldo',color:'#6b5bd6',horasObjetivo:42,rol:'',tarifaHora:0},
@@ -409,75 +413,75 @@ function defaultState(){
       {dia:'Domingo',  apertura:0, cierre:0, partido:2, responsable:true},
     ],
     defaults: {
-      open:  {startMin:8,  startMax:9,  endMin:15, endMax:17},
+      open:  {startMin:7,  startMax:8,  endMin:15, endMax:17},
       close: {startMin:14, startMax:16, endMin:21, endMax:22},
       splitAM:{startMin:10, startMax:11, endMin:14, endMax:15},
       splitPM:{startMin:18, startMax:19, endMin:21, endMax:22}
     },
-    config: { nightStart: 19 },
+    config: { nightStart: 19, horaInicio: 7 },
     horario: {
       mairo: {
-        "Lunes": {hours:[false,false,false,true,true,true,true,true,true,true,true,false,false,false], responsable:false},
-        "Martes": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,false,false], responsable:false},
-        "Miércoles": {hours:[false,false,true,true,true,true,true,false,false,false,false,false,false,false], responsable:false},
-        "Jueves": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
-        "Viernes": {hours:[false,false,true,true,true,true,false,false,false,false,true,true,true,false], responsable:false},
-        "Sábado": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
-        "Domingo": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
+        "Lunes": {hours:[false,false,false,false,true,true,true,true,true,true,true,true,false,false,false], responsable:false},
+        "Martes": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false], responsable:false},
+        "Miércoles": {hours:[false,false,false,true,true,true,true,true,false,false,false,false,false,false,false], responsable:false},
+        "Jueves": {hours:[false,false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
+        "Viernes": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true,false], responsable:false},
+        "Sábado": {hours:[false,false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
+        "Domingo": {hours:[false,false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
       },
       lina: {
-        "Lunes": {hours:[false,false,false,true,true,true,true,false,false,false,true,true,true,true], responsable:false},
-        "Martes": {hours:[false,false,false,false,true,true,true,true,false,false,false,true,true,true], responsable:false},
-        "Miércoles": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,false,false], responsable:false},
-        "Jueves": {hours:[false,false,true,true,true,true,true,false,false,false,false,false,false,false], responsable:false},
-        "Viernes": {hours:[false,false,false,false,true,true,true,true,false,false,false,true,true,true], responsable:false},
-        "Sábado": {hours:[false,false,false,false,true,true,true,true,false,false,false,true,true,true], responsable:false},
-        "Domingo": {hours:[false,false,false,true,true,true,true,true,true,true,true,false,false,false], responsable:false},
+        "Lunes": {hours:[false,false,false,false,true,true,true,true,false,false,false,true,true,true,true], responsable:false},
+        "Martes": {hours:[false,false,false,false,false,true,true,true,true,false,false,false,true,true,true], responsable:false},
+        "Miércoles": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false], responsable:false},
+        "Jueves": {hours:[false,false,false,true,true,true,true,true,false,false,false,false,false,false,false], responsable:false},
+        "Viernes": {hours:[false,false,false,false,false,true,true,true,true,false,false,false,true,true,true], responsable:false},
+        "Sábado": {hours:[false,false,false,false,false,true,true,true,true,false,false,false,true,true,true], responsable:false},
+        "Domingo": {hours:[false,false,false,false,true,true,true,true,true,true,true,true,false,false,false], responsable:false},
       },
       pedro: {
-        "Lunes": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
-        "Martes": {hours:[false,false,true,true,true,true,true,false,false,false,false,false,false,false], responsable:false},
-        "Miércoles": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,false,false], responsable:false},
-        "Jueves": {hours:[false,false,true,true,true,true,false,false,false,false,true,true,true,false], responsable:false},
-        "Viernes": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
-        "Sábado": {hours:[false,false,true,true,true,true,true,false,false,false,false,false,false,false], responsable:false},
-        "Domingo": {hours:[false,false,false,true,true,true,true,true,true,true,false,false,false,false], responsable:false},
+        "Lunes": {hours:[false,false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
+        "Martes": {hours:[false,false,false,true,true,true,true,true,false,false,false,false,false,false,false], responsable:false},
+        "Miércoles": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false], responsable:false},
+        "Jueves": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true,false], responsable:false},
+        "Viernes": {hours:[false,false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
+        "Sábado": {hours:[false,false,false,true,true,true,true,true,false,false,false,false,false,false,false], responsable:false},
+        "Domingo": {hours:[false,false,false,false,true,true,true,true,true,true,true,false,false,false,false], responsable:false},
       },
       reinaldo: {
-        "Lunes": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
-        "Martes": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
-        "Miércoles": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
-        "Jueves": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,false,false], responsable:false},
-        "Viernes": {hours:[false,false,true,true,true,true,true,false,false,false,false,false,false,false], responsable:false},
-        "Sábado": {hours:[false,false,false,false,true,true,true,true,false,false,false,true,true,true], responsable:false},
-        "Domingo": {hours:[false,false,false,true,true,true,true,true,true,true,false,false,false,false], responsable:false},
+        "Lunes": {hours:[false,false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
+        "Martes": {hours:[false,false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
+        "Miércoles": {hours:[false,false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
+        "Jueves": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false], responsable:false},
+        "Viernes": {hours:[false,false,false,true,true,true,true,true,false,false,false,false,false,false,false], responsable:false},
+        "Sábado": {hours:[false,false,false,false,false,true,true,true,true,false,false,false,true,true,true], responsable:false},
+        "Domingo": {hours:[false,false,false,false,true,true,true,true,true,true,true,false,false,false,false], responsable:false},
       },
       andi: {
-        "Lunes": {hours:[false,false,true,true,true,true,true,false,false,false,false,false,false,false], responsable:false},
-        "Martes": {hours:[false,false,false,false,false,false,false,false,false,false,false,true,true,true], responsable:false},
-        "Miércoles": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
-        "Jueves": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
-        "Viernes": {hours:[false,false,false,false,true,true,true,true,false,false,false,true,true,true], responsable:false},
-        "Sábado": {hours:[false,false,true,true,true,true,false,false,false,false,true,true,true,false], responsable:false},
-        "Domingo": {hours:[false,false,true,true,true,true,true,false,false,false,false,false,false,false], responsable:false},
+        "Lunes": {hours:[false,false,false,true,true,true,true,true,false,false,false,false,false,false,false], responsable:false},
+        "Martes": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,true,true,true], responsable:false},
+        "Miércoles": {hours:[false,false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
+        "Jueves": {hours:[false,false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
+        "Viernes": {hours:[false,false,false,false,false,true,true,true,true,false,false,false,true,true,true], responsable:false},
+        "Sábado": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true,false], responsable:false},
+        "Domingo": {hours:[false,false,false,true,true,true,true,true,false,false,false,false,false,false,false], responsable:false},
       },
       misael: {
-        "Lunes": {hours:[false,false,false,true,true,true,true,true,true,true,false,false,false,false], responsable:false},
-        "Martes": {hours:[false,false,true,true,true,true,true,false,false,false,true,true,true,true], responsable:false},
-        "Miércoles": {hours:[false,false,false,false,false,false,false,true,true,true,true,true,true,true], responsable:false},
-        "Jueves": {hours:[false,false,false,false,false,false,false,true,true,true,true,true,true,true], responsable:false},
-        "Viernes": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,false,false], responsable:false},
-        "Sábado": {hours:[false,false,false,false,false,false,false,true,true,true,true,true,true,true], responsable:false},
-        "Domingo": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,false,false], responsable:false},
+        "Lunes": {hours:[false,false,false,false,true,true,true,true,true,true,true,false,false,false,false], responsable:false},
+        "Martes": {hours:[false,false,false,true,true,true,true,true,false,false,false,true,true,true,true], responsable:false},
+        "Miércoles": {hours:[false,false,false,false,false,false,false,false,true,true,true,true,true,true,true], responsable:false},
+        "Jueves": {hours:[false,false,false,false,false,false,false,false,true,true,true,true,true,true,true], responsable:false},
+        "Viernes": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false], responsable:false},
+        "Sábado": {hours:[false,false,false,false,false,false,false,false,true,true,true,true,true,true,true], responsable:false},
+        "Domingo": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false], responsable:false},
       },
       marianela: {
-        "Lunes": {hours:[false,false,false,true,true,true,true,true,true,true,true,false,false,false], responsable:false},
-        "Martes": {hours:[false,false,true,true,true,true,false,false,false,false,true,true,true,false], responsable:false},
-        "Miércoles": {hours:[false,false,false,false,true,true,true,true,true,true,true,false,false,false], responsable:false},
-        "Jueves": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,false,false], responsable:false},
-        "Viernes": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
-        "Sábado": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
-        "Domingo": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
+        "Lunes": {hours:[false,false,false,false,true,true,true,true,true,true,true,true,false,false,false], responsable:false},
+        "Martes": {hours:[false,false,false,true,true,true,true,false,false,false,false,true,true,true,false], responsable:false},
+        "Miércoles": {hours:[false,false,false,false,false,true,true,true,true,true,true,true,false,false,false], responsable:false},
+        "Jueves": {hours:[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false], responsable:false},
+        "Viernes": {hours:[false,false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
+        "Sábado": {hours:[false,false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
+        "Domingo": {hours:[false,false,false,false,true,true,true,true,false,false,false,false,true,true,true], responsable:false},
       },
     },
     historial: {}
@@ -499,6 +503,21 @@ function normalizeState(){
     if(!Array.isArray(ar.semanasArchivadas)) ar.semanasArchivadas = [];
     if(!ar.config) ar.config = { nightStart: 19 };
     ar.empleados.forEach(e=>{ if(typeof e.tarifaHora !== 'number') e.tarifaHora = 0; });
+    // Migración: si el área cambió su hora de inicio (ej. Servicio al cliente ahora desde 7 a.m.),
+    // las franjas horarias ya guardadas en la nube (más cortas) se completan por delante con "false"
+    // (turno vacío) para no desalinear ni perder los datos existentes.
+    const horaIni = (ar.config && ar.config.horaInicio) || HORA_INICIO;
+    const largoEsperado = HORA_FIN - horaIni;
+    Object.keys(ar.horario||{}).forEach(empId=>{
+      const dias = ar.horario[empId];
+      Object.keys(dias||{}).forEach(dia=>{
+        const asig = dias[dia];
+        if(asig && Array.isArray(asig.hours) && asig.hours.length < largoEsperado){
+          const faltan = largoEsperado - asig.hours.length;
+          asig.hours = new Array(faltan).fill(false).concat(asig.hours);
+        }
+      });
+    });
   });
   if(!state.currentArea || !state.areas[state.currentArea]) state.currentArea = 'cocina';
 }
@@ -610,7 +629,7 @@ function updCov(i,field,val){ AR().cobertura[i][field]=val; save(); }
 
 function hourOptions(selected){
   let out='';
-  for(let h=HORA_INICIO; h<=HORA_FIN; h++){
+  for(let h=AR_HORA_INICIO(); h<=HORA_FIN; h++){
     out+=`<option value="${h}" ${h===selected?'selected':''}>${pad2(h)}:00</option>`;
   }
   return out;
@@ -651,7 +670,7 @@ function updNightStart(val){ AR().config.nightStart = parseInt(val); save(); ren
 function getAsig(empId,dia){
   const h = AR().horario;
   if(!h[empId]) h[empId]={};
-  if(!h[empId][dia]) h[empId][dia]={hours:new Array(HOURS.length).fill(false), responsable:false, descanso:false};
+  if(!h[empId][dia]) h[empId][dia]={hours:new Array(AR_HOURS().length).fill(false), responsable:false, descanso:false};
   if(typeof h[empId][dia].descanso !== 'boolean') h[empId][dia].descanso = false;
   return h[empId][dia];
 }
@@ -659,7 +678,7 @@ function horasDia(a){ return a.hours.filter(Boolean).length; }
 function horasNocturnasDia(a){
   const ns = (AR().config && AR().config.nightStart) || 19;
   let n=0;
-  HOURS.forEach((h,i)=>{ if(a.hours[i] && h>=ns) n++; });
+  AR_HOURS().forEach((h,i)=>{ if(a.hours[i] && h>=ns) n++; });
   return n;
 }
 function classifyTipo(hours){
@@ -696,7 +715,7 @@ function toggleDescanso(empId,dia){
   const a = getAsig(empId,dia);
   const willTurnOn = !a.descanso;
   if(willTurnOn){
-    a.hours = new Array(HOURS.length).fill(false);
+    a.hours = new Array(AR_HOURS().length).fill(false);
     a.responsable = false;
   }
   a.descanso = willTurnOn;
@@ -715,6 +734,7 @@ function scrollToDia(dia){
 
 function renderHorario(){
   const ns = (AR().config && AR().config.nightStart) || 19;
+  const HRS = AR_HOURS();
   const tabsDiv = document.getElementById('dia-tabs');
   tabsDiv.innerHTML = DIAS.map(d=>`<button onclick="scrollToDia('${d}')">${d}</button>`).join('');
 
@@ -724,12 +744,12 @@ function renderHorario(){
     out += `<div class="day-block" id="dia-block-${dia}">
       <h3>${dia}</h3>
       <div class="grid-wrap"><table>
-      <thead><tr><th>Persona</th>${HOURS.map(h=>`<th class="hourhead ${h>=ns?'night':''}" title="${pad2(h)}:00 - ${pad2(h+1)}:00">${pad2(h)}-${pad2(h+1)}</th>`).join('')}<th>Horas</th><th>Noct.</th><th>Resp.</th><th>Descanso</th></tr></thead>
+      <thead><tr><th>Persona</th>${HRS.map(h=>`<th class="hourhead ${h>=ns?'night':''}" title="${pad2(h)}:00 - ${pad2(h+1)}:00">${pad2(h)}-${pad2(h+1)}</th>`).join('')}<th>Horas</th><th>Noct.</th><th>Resp.</th><th>Descanso</th></tr></thead>
       <tbody>`;
     AR().empleados.forEach(emp=>{
       const a = getAsig(emp.id,dia);
       out += `<tr class="${a.descanso?'row-descanso':''}"><td style="text-align:left"><span class="pill-emp" style="background:${emp.color}">${emp.nombre}</span>${a.descanso?' <span class="badge warn">Descanso</span>':''}</td>`;
-      HOURS.forEach((h,i)=>{
+      HRS.forEach((h,i)=>{
         const on = a.hours[i];
         const nightCls = h>=ns ? 'night' : '';
         out += `<td class="hourcell ${nightCls}"><div class="hcell ${on?'on':''} ${a.descanso?'disabled':''}" style="${on?`background:${emp.color}`:''}" onclick="toggleHour('${emp.id}','${dia}',${i})"></div></td>`;
@@ -737,7 +757,7 @@ function renderHorario(){
       out += `<td>${horasDia(a)}h</td><td>${horasNocturnasDia(a)}h</td><td><input class="resp-check" type="checkbox" ${a.responsable?'checked':''} ${a.descanso?'disabled':''} onchange="toggleResponsable('${emp.id}','${dia}')"></td><td><input class="resp-check" type="checkbox" ${a.descanso?'checked':''} onchange="toggleDescanso('${emp.id}','${dia}')" title="Marcar día de descanso"></td></tr>`;
     });
     out += `<tr class="cov-row"><td>Cobertura</td>`;
-    HOURS.forEach((h,i)=>{
+    HRS.forEach((h,i)=>{
       const count = AR().empleados.filter(e=> getAsig(e.id,dia).hours[i]).length;
       out += `<td class="${h>=ns?'night':''}">${count}</td>`;
     });
@@ -750,8 +770,9 @@ function renderHorario(){
 /* ---------- GENERADOR EQUITATIVO ---------- */
 function randInt(min,max){ if(max<min) max=min; return Math.floor(Math.random()*(max-min+1))+min; }
 function fillRange(hours,startH,endH){
-  startH = Math.max(HORA_INICIO, Math.min(HORA_FIN, startH));
-  endH = Math.max(HORA_INICIO, Math.min(HORA_FIN, endH));
+  const hi = AR_HORA_INICIO();
+  startH = Math.max(hi, Math.min(HORA_FIN, startH));
+  endH = Math.max(hi, Math.min(HORA_FIN, endH));
   if(endH<=startH) endH = Math.min(HORA_FIN, startH+1);
   for(let h=startH; h<endH; h++) hours[idx(h)] = true;
 }
@@ -801,7 +822,7 @@ function generarHorario(){
     });
   });
   ar.horario = {};
-  ar.empleados.forEach(emp=>{ ar.horario[emp.id]={}; DIAS.forEach(d=>ar.horario[emp.id][d]={hours:new Array(HOURS.length).fill(false), responsable:false, descanso:descansosPrevios[emp.id][d]}); });
+  ar.empleados.forEach(emp=>{ ar.horario[emp.id]={}; DIAS.forEach(d=>ar.horario[emp.id][d]={hours:new Array(AR_HOURS().length).fill(false), responsable:false, descanso:descansosPrevios[emp.id][d]}); });
 
   function score(emp, campo){
     const h = ar.historial[emp.id] || {};
@@ -965,6 +986,7 @@ function archivarSemana(){
   if(!Array.isArray(ar.semanasArchivadas)) ar.semanasArchivadas = [];
   ar.semanasArchivadas.unshift({
     fecha: new Date().toISOString(),
+    horaInicio: AR_HORA_INICIO(),
     empleados: ar.empleados.map(e=> ({id:e.id, nombre:e.nombre, color:e.color})),
     horario: JSON.parse(JSON.stringify(ar.horario))
   });
@@ -1003,13 +1025,16 @@ function verSemanaArchivada(i){
   if(!s) return;
   const ns = (ar.config && ar.config.nightStart) || 19;
   const areaNombre = (AREA_DEFS.find(a=>a.id===state.currentArea)||{}).nombre || '';
+  // Usa la hora de inicio guardada en el momento del archivo (por si luego cambió la configuración del área).
+  const hiArchivo = (typeof s.horaInicio === 'number') ? s.horaInicio : HORA_INICIO;
+  const HRS_S = []; for(let h=hiArchivo; h<HORA_FIN; h++) HRS_S.push(h);
   let tablas = '';
   DIAS.forEach(dia=>{
-    tablas += `<h3>${dia}</h3><table><thead><tr><th>Persona</th>${HOURS.map(h=>`<th class="${h>=ns?'night':''}">${pad2(h)}-${pad2(h+1)}</th>`).join('')}<th>Horas</th></tr></thead><tbody>`;
+    tablas += `<h3>${dia}</h3><table><thead><tr><th>Persona</th>${HRS_S.map(h=>`<th class="${h>=ns?'night':''}">${pad2(h)}-${pad2(h+1)}</th>`).join('')}<th>Horas</th></tr></thead><tbody>`;
     s.empleados.forEach(emp=>{
-      const a = (s.horario[emp.id] && s.horario[emp.id][dia]) || {hours:new Array(HOURS.length).fill(false)};
+      const a = (s.horario[emp.id] && s.horario[emp.id][dia]) || {hours:new Array(HRS_S.length).fill(false)};
       tablas += `<tr><td style="text-align:left;font-weight:600;color:${emp.color}">${emp.nombre}${a.descanso?' (Descanso)':''}</td>`;
-      HOURS.forEach((h,idx)=>{
+      HRS_S.forEach((h,idx)=>{
         const on = a.hours[idx];
         tablas += `<td class="${h>=ns?'night':''}" style="${on?`background:${emp.color}`:''}">${on?'●':''}</td>`;
       });
