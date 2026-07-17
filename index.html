@@ -212,6 +212,11 @@
       <button class="btn danger" onclick="resetHistorial()">Borrar historial acumulado</button>
     </div>
   </div>
+  <div class="card">
+    <h2>Semanas completas archivadas</h2>
+    <div class="sub">Cada vez que cierras la semana, se guarda una copia completa (hora a hora, los 7 días) de esta área. Úsala para consultarla o imprimirla/enviarla más adelante.</div>
+    <div id="semanas-archivadas"></div>
+  </div>
 </section>
 
 </main>
@@ -254,7 +259,8 @@ function nuevaAreaVacia(){
     },
     config: { nightStart: 19 },
     horario: {},
-    historial: {}
+    historial: {},
+    semanasArchivadas: []
   };
 }
 
@@ -490,6 +496,7 @@ function normalizeState(){
     const ar = state.areas[a.id];
     if(!ar.horario) ar.horario = {};
     if(!ar.historial) ar.historial = {};
+    if(!Array.isArray(ar.semanasArchivadas)) ar.semanasArchivadas = [];
     if(!ar.config) ar.config = { nightStart: 19 };
     ar.empleados.forEach(e=>{ if(typeof e.tarifaHora !== 'number') e.tarifaHora = 0; });
   });
@@ -543,6 +550,7 @@ function setArea(id){
   renderHorario();
   renderEquidad();
   renderHistorial();
+  renderSemanasArchivadas();
 }
 
 function showSec(id){
@@ -551,7 +559,7 @@ function showSec(id){
   document.querySelectorAll('nav.topnav button').forEach(b=>b.classList.toggle('active', b.dataset.sec===id));
   if(id==='sec-cobertura') { renderDefaults(); renderNightSelect(); }
   if(id==='sec-equidad') renderEquidad();
-  if(id==='sec-historial') renderHistorial();
+  if(id==='sec-historial') { renderHistorial(); renderSemanasArchivadas(); }
   if(id==='sec-horario') renderHorario();
 }
 
@@ -951,11 +959,85 @@ function archivarSemana(){
       if(a.hours.some(Boolean)) h.finde++;
     });
   });
+
+  // Guarda una copia completa de la semana (hora a hora, los 7 días) para poder
+  // verla o enviarla más adelante, aunque luego se limpie para la próxima semana.
+  if(!Array.isArray(ar.semanasArchivadas)) ar.semanasArchivadas = [];
+  ar.semanasArchivadas.unshift({
+    fecha: new Date().toISOString(),
+    empleados: ar.empleados.map(e=> ({id:e.id, nombre:e.nombre, color:e.color})),
+    horario: JSON.parse(JSON.stringify(ar.horario))
+  });
+  if(ar.semanasArchivadas.length > 30) ar.semanasArchivadas.length = 30;
+
   ar.horario = {};
   save();
   renderHistorial();
+  renderSemanasArchivadas();
   renderHorario();
   showSec('sec-historial');
+}
+function fmtFechaArchivo(iso){
+  try{
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-CO', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+  }catch(e){ return iso; }
+}
+function renderSemanasArchivadas(){
+  const cont = document.getElementById('semanas-archivadas');
+  if(!cont) return;
+  const lista = AR().semanasArchivadas || [];
+  if(lista.length===0){
+    cont.innerHTML = '<div class="sub">Todavía no hay semanas completas archivadas en esta área.</div>';
+    return;
+  }
+  cont.innerHTML = lista.map((s,i)=> `
+    <div class="row-actions" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:8px 0;">
+      <span>Semana cerrada el <b>${fmtFechaArchivo(s.fecha)}</b></span>
+      <button class="btn secondary" onclick="verSemanaArchivada(${i})">📄 Ver / Enviar</button>
+    </div>`).join('');
+}
+function verSemanaArchivada(i){
+  const ar = AR();
+  const s = (ar.semanasArchivadas||[])[i];
+  if(!s) return;
+  const ns = (ar.config && ar.config.nightStart) || 19;
+  const areaNombre = (AREA_DEFS.find(a=>a.id===state.currentArea)||{}).nombre || '';
+  let tablas = '';
+  DIAS.forEach(dia=>{
+    tablas += `<h3>${dia}</h3><table><thead><tr><th>Persona</th>${HOURS.map(h=>`<th class="${h>=ns?'night':''}">${pad2(h)}-${pad2(h+1)}</th>`).join('')}<th>Horas</th></tr></thead><tbody>`;
+    s.empleados.forEach(emp=>{
+      const a = (s.horario[emp.id] && s.horario[emp.id][dia]) || {hours:new Array(HOURS.length).fill(false)};
+      tablas += `<tr><td style="text-align:left;font-weight:600;color:${emp.color}">${emp.nombre}${a.descanso?' (Descanso)':''}</td>`;
+      HOURS.forEach((h,idx)=>{
+        const on = a.hours[idx];
+        tablas += `<td class="${h>=ns?'night':''}" style="${on?`background:${emp.color}`:''}">${on?'●':''}</td>`;
+      });
+      tablas += `<td>${a.hours.filter(Boolean).length}h</td></tr>`;
+    });
+    tablas += `</tbody></table>`;
+  });
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+    <title>Horario ${areaNombre} — semana del ${fmtFechaArchivo(s.fecha)}</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:20px;color:#241a12;}
+      h1{font-size:18px;margin:0 0 4px;}
+      h2{font-size:13px;color:#7a6a58;margin:0 0 18px;font-weight:normal;}
+      h3{font-size:14px;margin:20px 0 6px;border-left:4px solid #b06a34;padding-left:8px;}
+      table{border-collapse:collapse;width:100%;font-size:11px;margin-bottom:6px;}
+      th,td{border:1px solid #ddd;padding:4px 5px;text-align:center;}
+      th{background:#f0e8d8;}
+      th.night,td.night{background:#fdf0d5;}
+      @media print{ button{display:none;} }
+    </style></head><body>
+    <button onclick="window.print()" style="padding:8px 16px;margin-bottom:14px;cursor:pointer;">🖨️ Imprimir / Guardar como PDF</button>
+    <h1>Córdova — Horario de ${areaNombre}</h1>
+    <h2>Semana cerrada el ${fmtFechaArchivo(s.fecha)}</h2>
+    ${tablas}
+    </body></html>`;
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
 }
 function renderHistorial(){
   const tbody = document.querySelector('#tbl-historial tbody');
