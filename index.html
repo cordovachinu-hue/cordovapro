@@ -178,6 +178,7 @@
       <button class="btn gold" onclick="generarHorario()">⚙️ Generar horario equitativo</button>
       <button class="btn secondary" onclick="limpiarHorario()">Limpiar semana</button>
       <button class="btn secondary" onclick="window.print()">🖨️ Imprimir / PDF (toda la semana)</button>
+      <button class="btn secondary" onclick="vistaCompartirSemana()">🖼️ Vista para compartir (limpia)</button>
       <button class="btn" onclick="archivarSemana()">✅ Cerrar semana y guardar en historial</button>
     </div>
     <div class="dia-tabs no-print" id="dia-tabs"></div>
@@ -1285,6 +1286,50 @@ function renderSemanasArchivadas(){
       <span>Semana cerrada el <b>${fmtFechaArchivo(s.fecha)}</b></span>
       <button class="btn secondary" onclick="verSemanaArchivada(${i})">📄 Ver / Enviar</button>
     </div>`).join('');
+}
+/* Vista limpia de la semana ACTUAL (todavía sin cerrar), pensada para compartir:
+   sin columna de Descanso, sin fila de Cobertura, fondo claro — se abre en una
+   pestaña nueva lista para capturar como imagen (pantallazo) o guardar como PDF. */
+function vistaCompartirSemana(){
+  const ar = AR();
+  const ns = (ar.config && ar.config.nightStart) || 19;
+  const areaNombre = (AREA_DEFS.find(a=>a.id===state.currentArea)||{}).nombre || '';
+  const HRS_S = AR_HOURS();
+  let tablas = '';
+  DIAS.forEach(dia=>{
+    tablas += `<h3>${dia}</h3><table><thead><tr><th>Persona</th>${HRS_S.map(h=>`<th class="${h>=ns?'night':''}">${pad2(h)}-${pad2(h+1)}</th>`).join('')}<th>Horas</th></tr></thead><tbody>`;
+    ar.empleados.forEach(emp=>{
+      const a = getAsig(emp.id, dia);
+      tablas += `<tr><td style="text-align:left;font-weight:600;color:${emp.color}">${emp.nombre}${a.descanso?' (Descanso)':''}</td>`;
+      HRS_S.forEach((h,idx)=>{
+        const on = a.hours[idx];
+        tablas += `<td class="${h>=ns?'night':''}" style="${on?`background:${emp.color}`:''}">${on?'●':''}</td>`;
+      });
+      tablas += `<td>${horasDia(a)}h</td></tr>`;
+    });
+    tablas += `</tbody></table>`;
+  });
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+    <title>Horario ${areaNombre} — semana actual</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:20px;color:#241a12;}
+      h1{font-size:18px;margin:0 0 4px;}
+      h2{font-size:13px;color:#7a6a58;margin:0 0 18px;font-weight:normal;}
+      h3{font-size:14px;margin:20px 0 6px;border-left:4px solid #b06a34;padding-left:8px;}
+      table{border-collapse:collapse;width:100%;font-size:11px;margin-bottom:6px;}
+      th,td{border:1px solid #ddd;padding:4px 5px;text-align:center;}
+      th{background:#f0e8d8;}
+      th.night,td.night{background:#fdf0d5;}
+      @media print{ button{display:none;} }
+    </style></head><body>
+    <button onclick="window.print()" style="padding:8px 16px;margin-bottom:14px;cursor:pointer;">🖨️ Imprimir / Guardar como imagen o PDF</button>
+    <h1>Córdova — Horario de ${areaNombre}</h1>
+    <h2>Semana actual (todavía sin cerrar) — generado ${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'})}</h2>
+    ${tablas}
+    </body></html>`;
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
 }
 function verSemanaArchivada(i){
   const ar = AR();
